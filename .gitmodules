@@ -1,3 +1,6 @@
 [submodule "externals/flot"]
 	path = externals/flot
 	url = https://github.com/FooBarWidget/flot.git
+[submodule "externals/jquery.history"]
+	path = externals/jquery.history
+	url = https://github.com/tkyk/jquery-history-plugin.git
