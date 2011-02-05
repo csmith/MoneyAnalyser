@@ -203,5 +203,4 @@
  });
 
 ?>
-var transData = <?PHP echo json_encode($transData); ?>;
-var monthData = <?PHP echo json_encode($rawmonths); ?>;
+var data = <?PHP echo json_encode($rawmonths); ?>;

@@ -23,6 +23,23 @@
    }
 
    $(function() {
+    var transData = [{label: 'Income', data: []}, {label: 'Expense', data: []}];
+
+    $.each(data, function(month, entries) {
+     var split = month.split('-');
+     var timestamp = new Date(split[0], split[1] - 1).getTime();
+     var sum = [0, 0];
+
+     $.each(entries, function() {
+      if (this.Category == '(Ignored)') { return; }
+
+      sum[this.Amount < 0 ? 1 : 0] += this.Amount;
+     });
+
+     transData[0].data.push([timestamp, sum[0]]);
+     transData[1].data.push([timestamp, sum[1]]);
+    }); 
+
     $.plot($('#history'), transData, {
       xaxis: { mode: 'time', timeformat: '%y/%m'},
       series: {
@@ -67,7 +84,7 @@
 
       var pieData = {};
       var table = $('#historytable table');
-      $.each(monthData[date], function(index, trans) {
+      $.each(data[date], function(index, trans) {
        if (incoming != trans.Amount > 0) { return; }
 
        var tr = $('<tr/>').addClass('data').appendTo(table);
@@ -88,14 +105,14 @@
        }
       });
 
-      var data = [];
+      var seriesData = [];
       $.each(pieData, function(category, amount) {
-       data.push({ label: category + ' (' + Math.round(amount) + ')', data: amount });
+       seriesData.push({ label: category + ' (' + Math.round(amount) + ')', data: amount });
       });
 
-      data.sort(function(a, b) { return b.data - a.data; });
+      seriesData.sort(function(a, b) { return b.data - a.data; });
 
-      $.plot($('#expense'), data, {
+      $.plot($('#expense'), seriesData, {
         series: { pie: { show: true, innerRadius: 0.5 } }
       });
      }
