@@ -66,81 +66,89 @@
   '(Ignored)' => array('Internal Transfer'),
  );
 
- // Formats part (one field) of a transaction
- function parseStatementPart($key, $value) {
-  if ($key == 'Date') {
-   $format = 'd/m/' . (strlen($value) == 8 ? 'y' : 'Y');
-   return DateTime::createFromFormat($format, $value)->setTime(0, 0, 0);
-  } else if ($key == 'Amount') {
-   return (double) $value;
-  }
+ @include('data.local.php');
 
-  return $value;
+ if (!function_exists('parseStatementPart')) {
+  // Formats part (one field) of a transaction
+  function parseStatementPart($key, $value) {
+   if ($key == 'Date') {
+    $format = 'd/m/' . (strlen($value) == 8 ? 'y' : 'Y');
+    return DateTime::createFromFormat($format, $value)->setTime(0, 0, 0);
+   } else if ($key == 'Amount') {
+    return (double) $value;
+   }
+
+   return $value;
+  }
  }
 
- // Formats an entire transaction from a statement
- function parseStatementLine($line) {
-  global $categories, $genericTypes, $types, $rules;
+ if (!function_exists('parseStatementLine')) {
+  // Formats an entire transaction from a statement
+  function parseStatementLine($line) {
+   global $categories, $genericTypes, $types, $rules;
 
-  if (preg_match('/^(.*?)\s*\((.*? @ RATE .*?)\)$/', $line['Description'], $m)) {
-   $line['Description'] = $m[1];
-   $line['Exchange'] = $m[2];
-  }
-
-  foreach ($types as $prefix => $type) {
-   if (strpos($line['Description'], $prefix) === 0) {
-    $line['Type'] = $type;
-
-    if (array_search($type, $genericTypes) === false) {
-     $line['Description'] = substr($line['Description'], strlen($prefix));
-    } else {
-     $line['RawDescription'] = $line['Description'];
-     $line['Description'] = $type;
-    }
-
-    break;
+   if (preg_match('/^(.*?)\s*\((.*? @ RATE .*?)\)$/', $line['Description'], $m)) {
+    $line['Description'] = $m[1];
+    $line['Exchange'] = $m[2];
    }
-  }
 
-  foreach ($rules as $regex => $replacement) {
-   if (preg_match('(' . $regex . ')', $line['Description'])) {
-    $line['RawDescription'] = $line['Description'];
-    $line['Description'] = $replacement;
-   }
-  }
+   foreach ($types as $prefix => $type) {
+    if (strpos($line['Description'], $prefix) === 0) {
+     $line['Type'] = $type;
 
-  foreach ($categories as $cat => $entries) {
-   foreach ($entries as $regex) {
-    if (preg_match('(' . $regex . ')', $line['Description'])) {
-     $line['Category'] = $cat;
+     if (array_search($type, $genericTypes) === false) {
+      $line['Description'] = substr($line['Description'], strlen($prefix));
+     } else {
+      $line['RawDescription'] = $line['Description'];
+      $line['Description'] = $type;
+     }
+
      break;
     }
    }
-  }
 
-  return $line;
+   foreach ($rules as $regex => $replacement) {
+    if (preg_match('(' . $regex . ')', $line['Description'])) {
+     $line['RawDescription'] = $line['Description'];
+     $line['Description'] = $replacement;
+    }
+   }
+
+   foreach ($categories as $cat => $entries) {
+    foreach ($entries as $regex) {
+     if (preg_match('(' . $regex . ')', $line['Description'])) {
+      $line['Category'] = $cat;
+      break;
+     }
+    }
+   }
+
+   return $line;
+  }
  }
 
- // Loads statements from the specified directory
- function loadStatements($dir = 'Statements') {
-  $results = array();
+ if (!function_exists('loadStatements')) {
+  // Loads statements from the specified directory
+  function loadStatements($dir = 'Statements') {
+   $results = array();
 
-  foreach (glob($dir . '/*.csv') as $statement) {
-   $fh = fopen($statement, 'r');
-   $data = array();
+   foreach (glob($dir . '/*.csv') as $statement) {
+    $fh = fopen($statement, 'r');
+    $data = array();
 
-   $headers = array_map('trim', fgetcsv($fh));
+    $headers = array_map('trim', fgetcsv($fh));
 
-   while (!feof($fh)) {
-    $line = parseStatementLine(array_combine($headers, array_map('parseStatementPart', $headers, array_map('trim', fgetcsv($fh)))));
-    $data[] = $line;
+    while (!feof($fh)) {
+     $line = parseStatementLine(array_combine($headers, array_map('parseStatementPart', $headers, array_map('trim', fgetcsv($fh)))));
+     $data[] = $line;
+    }
+    fclose($fh);
+
+    $results[basename($statement)] = $data;
    }
-   fclose($fh);
 
-   $results[basename($statement)] = $data;
+   return $results;
   }
-
-  return $results;
  }
 
  $entries = array_reduce(loadStatements(), 'array_merge', array());
