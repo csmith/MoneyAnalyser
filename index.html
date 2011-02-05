@@ -5,6 +5,7 @@
   <script src="externals/flot/jquery.js" type="text/javascript"></script>
   <script src="externals/flot/jquery.flot.js" type="text/javascript"></script>
   <script src="externals/flot/jquery.flot.pie.js" type="text/javascript"></script>
+  <script src="externals/flot/jquery.flot.selection.js" type="text/javascript"></script>
   <script src="data.php" type="text/javascript"></script>
   <script type="text/javascript">
    var previousPoint = null;
@@ -20,6 +21,75 @@
      padding: '2px',
      'background-color': '#fee',
     }).appendTo("body").fadeIn(200);
+   }
+
+   function getDateKey(date) {
+    return date.getFullYear() + '-' + (date.getMonth() < 9 ? '0' : '') + (date.getMonth() + 1);
+   }
+
+   function showSelectedMonths(start, end, incoming, outgoing) {
+    $('#historytable tr.data').remove();
+    $('#historytable').show();
+
+    var startDate = new Date(start), endDate = new Date(end);
+
+    if (startDate.getDate() > 1) {
+     startDate.setDate(1);
+     startDate.getMonth() == 11 && startDate.setYear(startDate.getFullYear() + 1);
+     startDate.setMonth(startDate.getMonth() == 11 ? 0 : startDate.getMonth() + 1);
+    }
+
+    var startKey = getDateKey(startDate), endKey = getDateKey(endDate);
+
+    if (startKey == endKey) {
+     $('#historytable h3').text('Transactions for ' + months[startDate.getMonth()] + ' ' + startDate.getFullYear());
+    } else if (startDate.getFullYear() == endDate.getFullYear()) {
+     $('#historytable h3').text('Transactions for ' + months[startDate.getMonth()] + '-' + months[endDate.getMonth()] + ' ' + startDate.getFullYear());
+    } else {
+     $('#historytable h3').text('Transactions for ' + months[startDate.getMonth()] + ' ' + startDate.getFullYear() + ' - ' +  months[endDate.getMonth()] + ' ' + endDate.getFullYear());
+    }
+
+    var pieData = {};
+    var table = $('#historytable table');
+    var include = false;
+    $.each(data, function(month, monthData) {
+     if (month == startKey) { include = true; }
+
+     if (include) {
+      $.each(monthData, function(index, trans) {
+       if (incoming != trans.Amount > 0) { return; }
+
+       var category = trans.Category ? trans.Category : 'Unsorted';
+
+       var tr = $('<tr/>').addClass('data').addClass('category' + category.replace(/[^a-zA-Z]*/g, '')).appendTo(table);
+ 
+       $('<td/>').text(trans.Date.date.split(' ')[0]).appendTo(tr);
+       $('<td/>').text(trans.Type ? trans.Type : 'Other').appendTo(tr);
+       $('<td/>').text(trans.Category ? trans.Category : '').appendTo(tr);
+       $('<td/>').text(trans.Description).appendTo(tr);
+       $('<td/>').text(trans.Amount).appendTo(tr);
+ 
+       if (category != '(Ignored)') {
+        if (!pieData[category]) { pieData[category] = 0; }
+        pieData[category] += Math.abs(trans.Amount);
+       }
+      });
+     }
+
+     if (month == endKey) { include = false; }
+    });
+
+    var seriesData = [];
+    $.each(pieData, function(category, amount) {
+     seriesData.push({ label: category + ' (' + Math.round(amount) + ')', data: amount });
+    });
+
+    seriesData.sort(function(a, b) { return b.data - a.data; });
+
+    $.plot($('#expense'), seriesData, {
+      series: { pie: { show: true, innerRadius: 0.5, highlight: { opacity: 0.5 } } },
+      grid: { clickable: true }
+    });
    }
 
    $(function() {
@@ -47,6 +117,7 @@
         points: { show: true }
       },
       grid: { hoverable: true, clickable: true },
+      selection: { mode : "x" }
     });
 
     $("#history").bind("plothover", function (event, pos, item) {
@@ -71,56 +142,27 @@
      }
     });
 
+    $('#history').bind('plotselected', function(event, ranges) {
+     var startDate = parseInt(ranges.xaxis.from.toFixed());
+     var endDate = parseInt(ranges.xaxis.to.toFixed());
+    
+     showSelectedMonths(startDate, endDate, 0); 
+    });
+
     $('#history').bind('plotclick', function(event, pos, item) {
      if (item) {
-      var incoming = item.seriesIndex == 0;
-      var dateOb = new Date(item.datapoint[0]);
-      var date = dateOb.getFullYear() + '-' + (dateOb.getMonth() < 9 ? '0' : '') + (dateOb.getMonth() + 1);
-
-      $('#historytable tr.data').remove();
-      $('#historytable').show();
-
-      $('#historytable h3').text('Transactions for ' + months[dateOb.getMonth()] + ' ' + dateOb.getFullYear());
-
-      var pieData = {};
-      var table = $('#historytable table');
-      $.each(data[date], function(index, trans) {
-       if (incoming != trans.Amount > 0) { return; }
-
-       var tr = $('<tr/>').addClass('data').appendTo(table);
-
-       trans.Category && trans.Category == '(Ignored)' && tr.addClass('ignored');
-       
-       $('<td/>').text(trans.Date.date.split(' ')[0]).appendTo(tr);
-       $('<td/>').text(trans.Type ? trans.Type : 'Other').appendTo(tr);
-       $('<td/>').text(trans.Category ? trans.Category : '').appendTo(tr);
-       $('<td/>').text(trans.Description).appendTo(tr);
-       $('<td/>').text(trans.Amount).appendTo(tr);
-
-       var category = trans.Category ? trans.Category : 'Unsorted';
-
-       if (category != '(Ignored)') {
-        if (!pieData[category]) { pieData[category] = 0; }
-        pieData[category] += Math.abs(trans.Amount);
-       }
-      });
-
-      var seriesData = [];
-      $.each(pieData, function(category, amount) {
-       seriesData.push({ label: category + ' (' + Math.round(amount) + ')', data: amount });
-      });
-
-      seriesData.sort(function(a, b) { return b.data - a.data; });
-
-      $.plot($('#expense'), seriesData, {
-        series: { pie: { show: true, innerRadius: 0.5 } }
-      });
+      showSelectedMonths(item.datapoint[0], item.datapoint[0], item.seriesIndex == 0, item.seriesIndex == 1);
      }
+    });
+
+    $('#expense').bind('plotclick', function(event, pos, item) {
+     $('#historytable .data').hide();
+     $('#historytable .category' + item.series.label.replace(/[^a-zA-Z]*/g, '')).show();
     });
    });
   </script>
   <style type="text/css">
-   .ignored td { color: gray; }
+   .categoryIgnored td { color: gray; }
    .left { width: 45%; float: left; }
    .right { margin-left: 50%; }
    h2 { margin-top: 0; }
