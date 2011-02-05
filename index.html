@@ -95,7 +95,8 @@
    }
 
    $(function() {
-    var transData = [{label: 'Income', data: []}, {label: 'Expense', data: []}];
+    var transData = [{label: 'Income', data: []}, {label: 'Expense', data: []}, {label: 'Difference', data: []}];
+    var min = new Date().getTime(), max = 0;
 
     $.each(data, function(month, entries) {
      var split = month.split('-');
@@ -110,15 +111,22 @@
 
      transData[0].data.push([timestamp, sum[0]]);
      transData[1].data.push([timestamp, sum[1]]);
+     transData[2].data.push([timestamp, sum[0] + sum[1]]);
+     min = Math.min(min, timestamp);
+     max = Math.max(max, timestamp);
     }); 
 
     plots.history = $.plot($('#history'), transData, {
       xaxis: { mode: 'time', timeformat: '%y/%m'},
       series: {
-        lines: { show: true },
+        lines: { show: true, fill: true },
         points: { show: true }
       },
-      grid: { hoverable: true, clickable: true },
+      grid: {
+        hoverable: true,
+        clickable: true,
+        markings: [{ color: '#000', lineWidth: 1, xaxis: { from: min, to: max }, yaxis: { from: 0, to: 0 } }]
+      },
       selection: { mode : "x" }
     });
 
@@ -135,8 +143,8 @@
                     
        var date = new Date(x);
 
-       showTooltip(item.pageX, item.pageY,
-                   (item.seriesIndex == 0 ? "Money in" : "Money out") + " during " + months[date.getMonth()] + " " + date.getFullYear() + " = " + y);
+       var seriesTitles = ["Money in", "Money out", "Balance change"];
+       showTooltip(item.pageX, item.pageY, (seriesTitles[item.seriesIndex]) + " during " + months[date.getMonth()] + " " + date.getFullYear() + " = " + y);
       }
      } else {
       $("#tooltip").remove();
