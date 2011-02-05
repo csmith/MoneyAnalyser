@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <title>Spending Analyser</title>
+  <script src="flot/jquery.min.js" type="text/javascript"></script>
+  <script src="flot/jquery.flot.min.js" type="text/javascript"></script>
+  <script src="flot/jquery.flot.pie.js" type="text/javascript"></script>
+  <script src="data.php" type="text/javascript"></script>
+  <script type="text/javascript">
+   var previousPoint = null;
+   var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+   function showTooltip(x, y, contents) {
+    $('<div id="tooltip">' + contents + '</div>').css( {
+     position: 'absolute',
+     display: 'none',
+     top: y + 5,
+     left: x + 5,
+     border: '1px solid #fdd',
+     padding: '2px',
+     'background-color': '#fee',
+    }).appendTo("body").fadeIn(200);
+   }
+
+   $(function() {
+    $.plot($('#history'), transData, {
+      xaxis: { mode: 'time', timeformat: '%y/%m'},
+      series: {
+        lines: { show: true },
+        points: { show: true }
+      },
+      grid: { hoverable: true, clickable: true },
+    });
+
+    $("#history").bind("plothover", function (event, pos, item) {
+     if (item) {
+      var id = {dataIndex: item.dataIndex, seriesIndex: item.seriesIndex};
+
+      if (previousPoint == null || previousPoint.dataIndex != id.dataIndex || previousPoint.seriesIndex != id.seriesIndex) {
+       previousPoint = id;
+                
+       $("#tooltip").remove();
+       var x = item.datapoint[0],
+           y = item.datapoint[1].toFixed(2);
+                    
+       var date = new Date(x);
+
+       showTooltip(item.pageX, item.pageY,
+                   (item.seriesIndex == 0 ? "Money in" : "Money out") + " during " + months[date.getMonth()] + " " + date.getFullYear() + " = " + y);
+      }
+     } else {
+      $("#tooltip").remove();
+      previousPoint = null;            
+     }
+    });
+
+    $('#history').bind('plotclick', function(event, pos, item) {
+     if (item) {
+      var incoming = item.seriesIndex == 0;
+      var dateOb = new Date(item.datapoint[0]);
+      var date = dateOb.getFullYear() + '-' + (dateOb.getMonth() < 9 ? '0' : '') + (dateOb.getMonth() + 1);
+
+      $('#historytable tr.data').remove();
+      $('#historytable').show();
+
+      $('#historytable h3').text('Transactions for ' + months[dateOb.getMonth()] + ' ' + dateOb.getFullYear());
+
+      var pieData = {};
+      var table = $('#historytable table');
+      $.each(monthData[date], function(index, trans) {
+       if (incoming != trans.Amount > 0) { return; }
+
+       var tr = $('<tr/>').addClass('data').appendTo(table);
+
+       trans.Category && trans.Category == '(Ignored)' && tr.addClass('ignored');
+       
+       $('<td/>').text(trans.Date.date.split(' ')[0]).appendTo(tr);
+       $('<td/>').text(trans.Type ? trans.Type : 'Other').appendTo(tr);
+       $('<td/>').text(trans.Category ? trans.Category : '').appendTo(tr);
+       $('<td/>').text(trans.Description).appendTo(tr);
+       $('<td/>').text(trans.Amount).appendTo(tr);
+
+       var category = trans.Category ? trans.Category : 'Unsorted';
+
+       if (category != '(Ignored)') {
+        if (!pieData[category]) { pieData[category] = 0; }
+        pieData[category] += Math.abs(trans.Amount);
+       }
+      });
+
+      var data = [];
+      $.each(pieData, function(category, amount) {
+       data.push({ label: category + ' (' + Math.round(amount) + ')', data: amount });
+      });
+
+      data.sort(function(a, b) { return b.data - a.data; });
+
+      $.plot($('#expense'), data, {
+        series: { pie: { show: true, innerRadius: 0.5 } }
+      });
+     }
+    });
+   });
+  </script>
+  <style type="text/css">
+   .ignored td { color: gray; }
+   .left { width: 45%; float: left; }
+   .right { margin-left: 50%; }
+   h2 { margin-top: 0; }
+  </style>
+ </head>
+ <body>
+  <div class="left">
+   <h2>Transaction History</h2>
+   <div id="history" style="width: 600px; height: 300px;"></div>
+   <div id="historytable" style="display: none;"><h3>Transactions for ??</h3><table><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th></tr></table></div>
+  </div>
+  <div class="right">
+   <h2>Categories</h2>
+   <div id="expense" style="width: 600px; height: 300px;"></div>
+  </div>
+ </body>
+</html>
