@@ -9,6 +9,7 @@
   <script src="data.php" type="text/javascript"></script>
   <script type="text/javascript">
    var previousPoint = null;
+   var plots = {};
    var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
    function showTooltip(x, y, contents) {
@@ -86,7 +87,7 @@
 
     seriesData.sort(function(a, b) { return b.data - a.data; });
 
-    $.plot($('#expense'), seriesData, {
+    plots.expense = $.plot($('#expense'), seriesData, {
       series: { pie: { show: true, innerRadius: 0.5, highlight: { opacity: 0.5 } } },
       grid: { clickable: true }
     });
@@ -110,7 +111,7 @@
      transData[1].data.push([timestamp, sum[1]]);
     }); 
 
-    $.plot($('#history'), transData, {
+    plots.history = $.plot($('#history'), transData, {
       xaxis: { mode: 'time', timeformat: '%y/%m'},
       series: {
         lines: { show: true },
@@ -163,12 +164,21 @@
   </script>
   <style type="text/css">
    .categoryIgnored td { color: gray; }
-   .left { width: 45%; float: left; }
-   .right { margin-left: 50%; }
+   .left { width: 45%; padding: 20px; float: left; }
+   .right { margin-left: 50%; padding: 20px; }
+   body { margin: 0; font-family: sans-serif; }
+   #header { background: url('res/gradient.png') repeat-x; height: 100px; margin: 0 0 10px 0; overflow: hidden; z-index: 0; }
+   #header h1 { color: white; margin: 0; font-size: 60px; position: absolute; top: 42px; left: 20px; z-index: 2; }
+   #headershadow { font-size: 60px; position: absolute; top: 42px; left: 25px; font-weight: bold; z-index: 1; }
    h2 { margin-top: 0; }
   </style>
  </head>
  <body>
+  <div id="header">
+   <h1>Money Analyser</h1>
+  </div>
+  <span id="headershadow">Money Analyser</span>
+
   <div class="left">
    <h2>Transaction History</h2>
    <div id="history" style="width: 600px; height: 300px;"></div>
