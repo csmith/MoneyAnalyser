@@ -87,23 +87,27 @@
   function parseStatementLine($line) {
    global $categories, $genericTypes, $types, $rules;
 
-   if (preg_match('/^(.*?)\s*\((.*? @ RATE .*?)\)$/', $line['Description'], $m)) {
-    $line['Description'] = $m[1];
-    $line['Exchange'] = $m[2];
+   if (!isset($line['Exchange']) || empty($line['Exchange'])) {
+    if (preg_match('/^(.*?)\s*\((.*? @ RATE .*?)\)$/', $line['Description'], $m)) {
+     $line['Description'] = $m[1];
+     $line['Exchange'] = $m[2];
+    }
    }
 
-   foreach ($types as $prefix => $type) {
-    if (strpos($line['Description'], $prefix) === 0) {
-     $line['Type'] = $type;
+   if (!isset($line['Type']) || empty($line['Type'])) {
+    foreach ($types as $prefix => $type) {
+     if (strpos($line['Description'], $prefix) === 0) {
+      $line['Type'] = $type;
 
-     if (array_search($type, $genericTypes) === false) {
-      $line['Description'] = substr($line['Description'], strlen($prefix));
-     } else {
-      $line['RawDescription'] = $line['Description'];
-      $line['Description'] = $type;
+      if (array_search($type, $genericTypes) === false) {
+       $line['Description'] = substr($line['Description'], strlen($prefix));
+      } else {
+       $line['RawDescription'] = $line['Description'];
+       $line['Description'] = $type;
+      }
+
+      break;
      }
-
-     break;
     }
    }
 
@@ -114,11 +118,13 @@
     }
    }
 
-   foreach ($categories as $cat => $entries) {
-    foreach ($entries as $regex) {
-     if (preg_match('(' . $regex . ')', $line['Description'])) {
-      $line['Category'] = $cat;
-      break;
+   if (!isset($line['Category']) || empty($line['Category'])) {
+    foreach ($categories as $cat => $entries) {
+     foreach ($entries as $regex) {
+      if (preg_match('(' . $regex . ')', $line['Description'])) {
+       $line['Category'] = $cat;
+       break;
+      }
      }
     }
    }
