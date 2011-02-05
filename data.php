@@ -1,70 +1,21 @@
 <?PHP
 
  // Description prefixes used to indicate types
- $types = array(
-  'SO - ' => 'Standing Order',
-  'DD - Hbos Card Services' => 'Internal Transfer',
-  'DD - ' => 'Direct Debit',
-  'CHQ - ' => 'Cheque',
-  'Bank Credit - ' => 'Bank Credit',
-  'Bill Payment - Hfx Credit Card' => 'Internal Transfer',
-  'Bill Payment - ' => 'Bill Payment',
-  'DC - ' => 'Debit Card',
-  'DC Cashback - ' => 'Debit Card Cashback',
-  'DC Refund - ' => 'Debit Card Refund',
-  'Link ATM - ' => 'Cash Withdrawal',
-  'ATM - ' => 'Cash Withdrawal',
-  'Faster Payment - ' => 'Transfer',
-  'PAYMENT REC\'D - THANK YOU' => 'Internal Transfer',
-  'DIRECT DEBIT THANK YOU' => 'Internal Transfer',
- );
+ // e.g. 'DD -' => 'Direct Debit'
+ $types = array();
 
  // Types where the real description should be discarded in favour
  // of the type name
- $genericTypes = array(
-  'Internal Transfer',
-  'Cash Withdrawal',
-  'Cheque',
- );
+ // e.g. 'Cash Withdrawal'
+ $genericTypes = array();
 
  // Custom user rules for grouping different descriptions
- $rules = array(
-  '^(?i)tesco' => 'Tesco',
-  '^(?i)(sacat )?sainsbury\'?s' => 'Sainsbury\'s',
-  '^(?i)marks & spencer' => 'M&S',
-  '^(?i)argos' => 'Argos',
-  '^(?i)subway' => 'Subway',
-  '^(?i)specsavers' => 'Specsavers',
-  '^(?i)adsl24' => 'ADSL 24',
-  '^(?i)foxtons' => 'Foxtons',
-  '^(?i)(eve online|ccp games)' => 'CCP Games',
-  '^(?i)nandos' => 'Nandos',
-  '^(?i)pizza express' => 'Pizza Express',
-  '^(?i)steam(games|powered)\.com' => 'Steam',
-  '^(?i)spotify(\.com|subs|\s)' => 'Spotify',
-  '^(?i)t-\s?mobile' => 'T-Mobile',
-  '^(?i)TGI Friday\'s' => 'TGI Friday\'s',
-  '^(?i)wh smith' => 'WH Smiths',
-  '^(?i)Codeweavers' => 'Codeweavers',
-  '^(?i)Cineworld' => 'Cineworld',
-  '^(?i)123-reg\.co\.uk' => '123-reg.co.uk',
-  '866-321-8851' => 'Amazon Kindle',
-  '(?i)Amazon Digital Dwnlds\s*amazon.co.uk' => 'Amazon MP3',
-  '^(?i)Ocado' => 'Ocado',
- );
+ // e.g. '(?i)^(company|service123)' => 'Company'
+ $rules = array();
 
  // Categories
- $categories = array(
-  'Groceries' => array('Tesco', 'Ocado', 'M&S'),
-  'Home expenses' => array('T-Mobile', 'Bt Group Plc', 'Edf Energy', 'Foxtons', 'ADSL 24', 'Lb Southwark', '(?i)0800 Repair'),
-  'Entertainment' => array('Amazon', 'Spotify', 'Cineworld', '(?i)sky payments', 'Steam', '(?i)play.com'),
-  'Online' => array('(?i)giganews', 'Shane', '(?i)^github'),
-  'Cash' => array('Cash Withdrawal'),
-  'Going out' => array('(?i)tayyab', '(?i)founders arms', 'Nandos', '(?i)all bar one', 'TGI Friday\'s', '(?i)^piccolino', 'EAT & DRINK', '(?i)www.urbanbite.com'),
-  'Transport' => array('(?i)ec mainline'),
-  'Health/Medical' => array('Specsavers'),
-  '(Ignored)' => array('Internal Transfer'),
- );
+ // e.g. 'Groceries' => array('Shop1', 'Shop2', '(?i)regex')
+ $categories = array();
 
  @include('data.local.php');
 
