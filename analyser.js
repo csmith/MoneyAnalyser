@@ -1,4 +1,5 @@
 var previousPoint = null;
+var state = {};
 var plots = {};
 var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -23,7 +24,35 @@ function getDateKey(date) {
  return date.getFullYear() + '-' + (date.getMonth() < 9 ? '0' : '') + (date.getMonth() + 1);
 }
 
-function showSelectedMonths(start, end, incoming, outgoing) {
+function expandLinkHandler(event) {
+ var text = $(this).text();
+ var expanded = text.substr(0, 2) == '(+';
+
+ if (!state.expanded) {
+  state.expanded = {};
+ }
+
+ if (expanded) {
+  state.expanded[event.data.id] = true;
+  setState({}, []);
+ } else {
+  delete state.expanded[event.data.id];
+  setState({}, []);
+ }
+
+ colourTableRows($('#historytable'));
+ return false;
+}
+
+function setState(newState, invalidatedState) {
+ $.extend(true, state, newState);
+
+ $.each(invalidatedState, function(_, x) { delete state[x]; });
+
+ $.history.load(JSON.stringify(state));
+}
+
+function showSelectedMonths(start, end, incoming, outgoing, categoryFilter) {
  $('#historytable tr.data').remove();
  $('#historytable').show();
 
@@ -58,42 +87,42 @@ function showSelectedMonths(start, end, incoming, outgoing) {
     if (incoming != trans.Amount > 0) { return; }
 
     var category = trans.Category ? trans.Category : 'Unsorted';
+ 
+    if (category != '(Ignored)') {
+     if (!pieData[category]) { pieData[category] = 0; }
+     pieData[category] += Math.abs(trans.Amount);
+    }
+
+    if (categoryFilter && categoryFilter != category) { return; }
+
     var tr = $('<tr/>').addClass('data').addClass('category' + category.replace(/[^a-zA-Z]*/g, '')).appendTo(table);
 
     if (lastEntry.Description == trans.Description && lastEntry.Type == trans.Type && lastEntry.Category == lastEntry.Category) {
      tr.hide();
 
      if (lastEntry.id) {
+      var prefix = '(' + (state.expanded && state.expanded[lastEntry.id] ? '-' : '+');
       lastEntry.count++;
-      $('span', lastEntry.tr).text('(+' + lastEntry.count + ')');
+      $('span', lastEntry.tr).text(prefix + lastEntry.count + ')');
      } else {
       lastEntry.id = ++id;
       lastEntry.count = 1;
-      var a = $('<span>').addClass('link').text('(+1)').appendTo($('td.desc', lastEntry.tr).append(' '));
-      a.data('otherAmount', lastEntry.Amount);
-      a.bind('click', { id: lastEntry.id, tr: lastEntry.tr }, function(event) {
-       $('.hidden' + event.data.id).toggle();
-
-       var text = $(this).text();
-       text = (text.substr(0, 2) == '(+' ? '(-' : '(+') + text.substr(2);
-       $(this).text(text);
-
-       var amount = $('.amount', event.data.tr);
-       var oldAmount = amount.text();
-       amount.text($(this).data('otherAmount'));
-       $(this).data('otherAmount', oldAmount);
-
-       colourTableRows($('#historytable'));
-      });
+      var prefix = '(' + (state.expanded && state.expanded[lastEntry.id] ? '-' : '+');
+      var a = $('<span>').addClass('link').text(prefix + '1)').appendTo($('td.desc', lastEntry.tr).append(' '));
+      a.bind('click', { id: lastEntry.id, tr: lastEntry.tr }, expandLinkHandler);
      }
 
      lastEntry.Amount = Math.round(100 * (lastEntry.Amount + trans.Amount)) / 100;
-     $('.amount', lastEntry.tr).text(lastEntry.Amount);
+     if (state.expanded && state.expanded[lastEntry.id]) {
+      tr.show();
+     } else {
+      $('.amount', lastEntry.tr).text(lastEntry.Amount);
+     }
 
      tr.addClass('collapsed hidden' + lastEntry.id);
+
     } else {
-     lastEntry = trans;
-     lastEntry.tr = tr;
+     lastEntry = $.extend({}, trans, {tr: tr});
     }
 
     $('<td/>').text(trans.Date.date.split(' ')[0]).appendTo(tr);
@@ -101,11 +130,6 @@ function showSelectedMonths(start, end, incoming, outgoing) {
     $('<td/>').text(trans.Category ? trans.Category : '').appendTo(tr);
     $('<td/>').addClass('desc').text(trans.Description).appendTo(tr);
     $('<td/>').addClass('amount').text(trans.Amount).appendTo(tr);
- 
-    if (category != '(Ignored)') {
-     if (!pieData[category]) { pieData[category] = 0; }
-     pieData[category] += Math.abs(trans.Amount);
-    }
    });
   }
 
@@ -224,27 +248,35 @@ $(function() {
   var startDate = parseInt(ranges.xaxis.from.toFixed());
   var endDate = parseInt(ranges.xaxis.to.toFixed());
  
-  $.history.load('start:' + startDate + ';end:' + endDate + ';type:expenses'); 
+  if (state.start != startDate || state.end != endDate || state.type != 'expenses') {
+   setState({ start: startDate, end: endDate, type: 'expenses' }, ['categoryFilter', 'expanded']);
+  }
  });
 
  $('#history').bind('plotclick', function(event, pos, item) {
   if (item) {
-   $.history.load('start:' + item.datapoint[0] + ';end:' + item.datapoint[0] + ';type:' + (item.seriesIndex == 0 ? 'income' : 'expenses'));
+   setState({ start: item.datapoint[0], end: item.datapoint[0], type: item.seriesIndex == 0 ? 'income' : 'expenses' }, ['categoryFilter', 'expanded']);
   }
  });
 
  $('#expense').bind('plotclick', function(event, pos, item) {
-  $('#historytable .data').hide();
-  $('#historytable .category' + item.series.label.replace(/[^a-zA-Z]*/g, '')).show();
-  colourTableRows($('#historytable'));
+  setState({ categoryFilter: item.series.label.replace(/ \([0-9]+\)$/, '') }, ['expanded']);
  });
 
  $.history.init(function(hash) {
+  var oldState = $.extend({}, state);
+
+  try {
+   state = JSON.parse(hash);
+  } catch (ex) {
+   state = {};
+  }
+
   var match = /start:([0-9]+);end:([0-9]+);type:(income|expenses)/.exec(hash);
 
-  if (match != null) {
-   showSelectedMonths(parseInt(match[1]), parseInt(match[2]), match[3] == 'income', match[3] == 'expenses');
-   plots.history.setSelection({ xaxis: { from: parseInt(match[1]), to: parseInt(match[2]) }});
+  if (state.start && state.end && state.type) {
+   showSelectedMonths(state.start, state.end, state.type == 'income', state.type == 'expenses', state.categoryFilter);
+   (oldState.start != state.start || oldState.end != state.end) && plots.history.setSelection({ xaxis: { from: state.start, to: state.end }});
   }
  });
 });
