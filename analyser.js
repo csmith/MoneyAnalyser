@@ -197,21 +197,15 @@ $(function() {
   catData.push(series);
  });
 
- catData.sort(function(a, b) { return a.total - b.total; });
+ var markings = [];
 
- plots.history = $.plot($('#history'), transData, {
-   xaxis: { mode: 'time', timeformat: '%y/%m' },
-   series: {
-     lines: { show: true, fill: true },
-     points: { show: true }
-   },
-   grid: {
-     hoverable: true,
-     clickable: true,
-     markings: [{ color: '#000', lineWidth: 1, xaxis: { from: min, to: max }, yaxis: { from: 0, to: 0 } }]
-   },
-   selection: { mode : "x" }
- });
+ var year = new Date(new Date(max).getFullYear(), 0);
+ while (year.getTime() > min) {
+  markings.push({ color: '#000', lineWidth: 1, xaxis: { from: year.getTime(), to: year.getTime() } });
+  year.setFullYear(year.getFullYear() - 1);
+ }
+
+ catData.sort(function(a, b) { return a.total - b.total; });
 
  plots.cathistory = $.plot($('#cathistory'), catData, {
    xaxis: { mode: 'time', timeformat: '%y/%m' },
@@ -220,6 +214,26 @@ $(function() {
      stack: true,
      lines: { show: true, fill: true }
    },
+   grid: {
+    markings: markings
+   }
+ });
+
+ markings.push({ color: '#000', lineWidth: 1, yaxis: { from: 0, to: 0 } });
+
+ plots.history = $.plot($('#history'), transData, {
+   xaxis: { mode: 'time', timeformat: '%y/%m' },
+   series: {
+     lines: { show: true, fill: true },
+     points: { show: true }
+   },
+   legend: { noColumns: 3, position: 'nw' },
+   grid: {
+     hoverable: true,
+     clickable: true,
+     markings: markings 
+   },
+   selection: { mode : "x" }
  });
 
  $("#history").bind("plothover", function (event, pos, item) {
