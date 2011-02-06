@@ -91,6 +91,7 @@ function showSelectedMonths(start, end, incoming, outgoing) {
 
 $(function() {
  var transData = [{label: 'Income', data: []}, {label: 'Expense', data: []}, {label: 'Difference', data: []}];
+ var categories = {};
  var min = new Date().getTime(), max = 0;
 
  $.each(data, function(month, entries) {
@@ -100,6 +101,13 @@ $(function() {
 
   $.each(entries, function() {
    if (this.Category == '(Ignored)') { return; }
+
+   if (this.Amount < 0) {
+    var category = this.Category ? this.Category : 'Unsorted';
+    if (!categories[category]) { categories[category] = {}; }
+    if (!categories[category][timestamp]) { categories[category][timestamp] = 0; }
+    categories[category][timestamp] -= this.Amount;
+   }
 
    sum[this.Amount < 0 ? 1 : 0] += this.Amount;
   });
@@ -111,8 +119,27 @@ $(function() {
   max = Math.max(max, timestamp);
  }); 
 
+ var catData = [];
+ $.each(categories, function(category, entries) {
+  var series = {label: category, data: []};
+  var total = 0;
+
+  $.each(transData[0].data, function() {
+   var timestamp = this[0];
+   var val = entries[timestamp] ? entries[timestamp] : 0;
+   total += val;
+   series.data.push([timestamp, val]);
+  });
+
+  series.total = total;
+
+  catData.push(series);
+ });
+
+ catData.sort(function(a, b) { return a.total - b.total; });
+
  plots.history = $.plot($('#history'), transData, {
-   xaxis: { mode: 'time', timeformat: '%y/%m'},
+   xaxis: { mode: 'time', timeformat: '%y/%m' },
    series: {
      lines: { show: true, fill: true },
      points: { show: true }
@@ -123,6 +150,15 @@ $(function() {
      markings: [{ color: '#000', lineWidth: 1, xaxis: { from: min, to: max }, yaxis: { from: 0, to: 0 } }]
    },
    selection: { mode : "x" }
+ });
+
+ plots.cathistory = $.plot($('#cathistory'), catData, {
+   xaxis: { mode: 'time', timeformat: '%y/%m' },
+   legend: { noColumns: 2 },
+   series: {
+     stack: true,
+     lines: { show: true, fill: true }
+   },
  });
 
  $("#history").bind("plothover", function (event, pos, item) {
