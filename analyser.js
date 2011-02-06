@@ -48,6 +48,8 @@ function showSelectedMonths(start, end, incoming, outgoing) {
  var pieData = {};
  var table = $('#historytable table');
  var include = false;
+ var lastEntry = {};
+ var id = 0;
  $.each(data, function(month, monthData) {
   if (month == startKey) { include = true; }
 
@@ -56,14 +58,49 @@ function showSelectedMonths(start, end, incoming, outgoing) {
     if (incoming != trans.Amount > 0) { return; }
 
     var category = trans.Category ? trans.Category : 'Unsorted';
-
     var tr = $('<tr/>').addClass('data').addClass('category' + category.replace(/[^a-zA-Z]*/g, '')).appendTo(table);
- 
+
+    if (lastEntry.Description == trans.Description && lastEntry.Type == trans.Type && lastEntry.Category == lastEntry.Category) {
+     tr.hide();
+
+     if (lastEntry.id) {
+      lastEntry.count++;
+      $('span', lastEntry.tr).text('(+' + lastEntry.count + ')');
+     } else {
+      lastEntry.id = ++id;
+      lastEntry.count = 1;
+      var a = $('<span>').addClass('link').text('(+1)').appendTo($('td.desc', lastEntry.tr).append(' '));
+      a.data('otherAmount', lastEntry.Amount);
+      a.bind('click', { id: lastEntry.id, tr: lastEntry.tr }, function(event) {
+       $('.hidden' + event.data.id).toggle();
+
+       var text = $(this).text();
+       text = (text.substr(0, 2) == '(+' ? '(-' : '(+') + text.substr(2);
+       $(this).text(text);
+
+       var amount = $('.amount', event.data.tr);
+       var oldAmount = amount.text();
+       amount.text($(this).data('otherAmount'));
+       $(this).data('otherAmount', oldAmount);
+
+       colourTableRows($('#historytable'));
+      });
+     }
+
+     lastEntry.Amount = Math.round(100 * (lastEntry.Amount + trans.Amount)) / 100;
+     $('.amount', lastEntry.tr).text(lastEntry.Amount);
+
+     tr.addClass('collapsed hidden' + lastEntry.id);
+    } else {
+     lastEntry = trans;
+     lastEntry.tr = tr;
+    }
+
     $('<td/>').text(trans.Date.date.split(' ')[0]).appendTo(tr);
     $('<td/>').text(trans.Type ? trans.Type : 'Other').appendTo(tr);
     $('<td/>').text(trans.Category ? trans.Category : '').appendTo(tr);
-    $('<td/>').text(trans.Description).appendTo(tr);
-    $('<td/>').text(trans.Amount).appendTo(tr);
+    $('<td/>').addClass('desc').text(trans.Description).appendTo(tr);
+    $('<td/>').addClass('amount').text(trans.Amount).appendTo(tr);
  
     if (category != '(Ignored)') {
      if (!pieData[category]) { pieData[category] = 0; }
