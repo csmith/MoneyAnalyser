@@ -317,23 +317,24 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
 
  $('#historytable h3').text((categoryFilter ? categoryFilter + ' t' : 'T') + 'ransactions for ' + startDate.getRangeText(endDate));
 
- var table = $('#historytable table');
- var lastEntry = {};
- var id = 0;
  var included = getDataForRange(startDate, endDate);
  var filtered = $.grep(included, function(x) {
   var category = x.Category ? x.Category : 'Unsorted';
   return (incoming == x.Amount > 0) && (!categoryFilter || categoryFilter == category);
  });
 
+ var table = $('#historytable table');
+ var total = 0;
+ var lastEntry = {};
+ var id = 0;
  $.each(filtered, function() {
-  trans = this;
+  total += this.Amount;
 
-  var category = trans.Category ? trans.Category : 'Unsorted';
+  var category = this.Category ? this.Category : 'Unsorted';
 
   var tr = $('<tr/>').addClass('data').addClass('category' + category.replace(/[^a-zA-Z]*/g, '')).appendTo(table);
 
-  if (shouldMerge(lastEntry, trans)) {
+  if (shouldMerge(lastEntry, this)) {
    if (lastEntry.id) {
     var prefix = '(' + (expanded[lastEntry.id] ? '-' : '+');
     lastEntry.count++;
@@ -347,22 +348,26 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
     a.data('single', lastEntry.Amount);
    }
 
-   lastEntry.Amount = Math.round(100 * (lastEntry.Amount + trans.Amount)) / 100;
+   lastEntry.Amount = Math.round(100 * (lastEntry.Amount + this.Amount)) / 100;
    $('#collapseHandle' + lastEntry.id).data('total', lastEntry.Amount);
 
    !expanded[lastEntry.id] && tr.hide() && $('.amount', lastEntry.tr).text(lastEntry.Amount);
 
    tr.addClass('collapsed hidden' + lastEntry.id);
   } else {
-    lastEntry = $.extend({}, trans, {tr: tr});
+    lastEntry = $.extend({}, this, {tr: tr});
   }
 
-  $('<td/>').text(trans.Date.date.split(' ')[0]).appendTo(tr);
-  $('<td/>').text(trans.Type ? trans.Type : 'Other').appendTo(tr);
-  $('<td/>').text(trans.Category ? trans.Category : '').appendTo(tr);
-  $('<td/>').addClass('desc').text(trans.Description).appendTo(tr);
-  $('<td/>').addClass('amount').text(trans.Amount).appendTo(tr);
+  $('<td/>').text(this.Date.date.split(' ')[0]).appendTo(tr);
+  $('<td/>').text(this.Type ? this.Type : 'Other').appendTo(tr);
+  $('<td/>').text(this.Category ? this.Category : '').appendTo(tr);
+  $('<td/>').addClass('desc').text(this.Description).appendTo(tr);
+  $('<td/>').addClass('amount').text(this.Amount).appendTo(tr);
  });
+
+ var tr = $('<tr/>').addClass('data total').appendTo(table);
+ $('<th colspan="4" class="total">Total</th>').appendTo(tr);
+ $('<td class="amount"></td>').text(total).appendTo(tr);
 
  colourTableRows(table);
  drawCategoryPieChart(included, incoming);
