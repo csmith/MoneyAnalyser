@@ -1,5 +1,6 @@
 var previousPoint = null;
 var state = {};
+var oldState = {};
 var plots = {};
 
 // -----------------------------------------------------------------------------
@@ -131,11 +132,19 @@ function getDataForRange(start, end) {
  *
  * @param newState The new properties to add to the state
  * @param invalidatedState An array of state keys to remove
+ * @param invalidatedSubState An map of state subkeys to remove
  */
-function setState(newState, invalidatedState) {
+function setState(newState, invalidatedState, invalidatedSubState) {
+ oldState = $.extend(true, {}, state);
+
  $.extend(true, state, newState);
 
- $.each(invalidatedState, function(_, x) { delete state[x]; });
+ invalidatedState && $.each(invalidatedState, function(_, x) { delete state[x]; });
+ invalidatedSubState && $.each(invalidatedSubState, function(key, values) {
+  $.each(values, function() {
+   delete state[key][this];
+  });
+ });
 
  $.history.load(JSON.stringify(state));
 }
@@ -147,8 +156,6 @@ function setState(newState, invalidatedState) {
  * @param {string} hash The new page fragment
  */
 function handleStateChange(hash) {
- var oldState = $.extend({}, state);
-
  try {
   state = JSON.parse(hash);
  } catch (ex) {
@@ -156,8 +163,13 @@ function handleStateChange(hash) {
  }
 
  if (state.start && state.end && state.type) {
-  // Update the transaction table and pie charts
-  showSelectedMonths(state.start, state.end, state.type == 'income', state.type == 'expenses', state.categoryFilter, state.expanded);
+  if (state.start == oldState.start && state.end == oldState.end && state.type == oldState.type && state.categoryFilter == oldState.categoryFilter) {
+   // Just show/hide nodes as required
+   ensureExpanded(oldState.expanded, state.expanded);
+  } else {
+   // Update the transaction table and pie charts
+   showSelectedMonths(state.start, state.end, state.type == 'income', state.type == 'expenses', state.categoryFilter, state.expanded);
+  }
 
   // If the selection has changed, update the visual representation
   (oldState.start != state.start || oldState.end != state.end) && plots.history.setSelection({ xaxis: { from: state.start, to: state.end }});
@@ -205,20 +217,49 @@ function expandLinkHandler(event) {
  var text = $(this).text();
  var expanded = text.substr(0, 2) == '(+';
 
- if (!state.expanded) {
-  state.expanded = {};
- }
-
  if (expanded) {
-  state.expanded[event.data.id] = true;
-  setState({}, []);
+  var newExpanded = {};
+  newExpanded[event.data.id] = true;
+  setState({expanded: newExpanded}, []);
  } else {
-  delete state.expanded[event.data.id];
-  setState({}, []);
+  setState({}, [], {expanded: [event.data.id]});
  }
 
  colourTableRows($('#historytable'));
  return false;
+}
+
+/**
+ * Ensures that the desired elements are appropriately expanded or collapsed.
+ *
+ * @param oldList A map containing keys for each entry that was previously expanded
+ * @param newList A map containing keys for each entry that should now be expanded
+ */
+function ensureExpanded(oldList, newList) {
+ oldList = oldList || {};
+ newList = newList || {};
+
+ $.each(newList, function(id, _) {
+  if (!oldList[id]) {
+   // This entry needs to be expanded
+   $('.hidden' + id).show();
+   var handle = $('#collapseHandle' + id);
+   handle.text(handle.text().replace(/\+/, '-'));
+   handle.parents('tr').find('td.amount').text(handle.data('single'));
+  }
+ });
+
+ $.each(oldList, function(id, _) {
+  if (!newList[id]) {
+   // This entry needs to be collapsed
+   $('.hidden' + id).hide();
+   var handle = $('#collapseHandle' + id);
+   handle.text(handle.text().replace(/\-/, '+'));
+   handle.parents('tr').find('td.amount').text(handle.data('total'));
+  }
+ });
+
+ colourTableRows($('#historytable'));
 }
 
 /**
@@ -280,14 +321,15 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
  var lastEntry = {};
  var id = 0;
  var included = getDataForRange(startDate, endDate);
+ var filtered = $.grep(included, function(x) {
+  var category = x.Category ? x.Category : 'Unsorted';
+  return (incoming == x.Amount > 0) && (!categoryFilter || categoryFilter == category);
+ });
 
- $.each(included, function() {
+ $.each(filtered, function() {
   trans = this;
-  if (incoming != trans.Amount > 0) { return; }
 
   var category = trans.Category ? trans.Category : 'Unsorted';
-
-  if (categoryFilter && categoryFilter != category) { return; }
 
   var tr = $('<tr/>').addClass('data').addClass('category' + category.replace(/[^a-zA-Z]*/g, '')).appendTo(table);
 
@@ -300,11 +342,13 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
     lastEntry.id = ++id;
     lastEntry.count = 1;
     var prefix = '(' + (expanded[lastEntry.id] ? '-' : '+');
-    var a = $('<span>').addClass('link').text(prefix + '1)').appendTo($('td.desc', lastEntry.tr).append(' '));
-    a.bind('click', { id: lastEntry.id, tr: lastEntry.tr }, expandLinkHandler);
+    var a = $('<span>').addClass('link').text(prefix + '1)').attr('id', 'collapseHandle' + lastEntry.id).appendTo($('td.desc', lastEntry.tr).append(' '));
+    a.bind('click', { id: lastEntry.id }, expandLinkHandler);
+    a.data('single', lastEntry.Amount);
    }
 
    lastEntry.Amount = Math.round(100 * (lastEntry.Amount + trans.Amount)) / 100;
+   $('#collapseHandle' + lastEntry.id).data('total', lastEntry.Amount);
 
    !expanded[lastEntry.id] && tr.hide() && $('.amount', lastEntry.tr).text(lastEntry.Amount);
 
@@ -425,7 +469,7 @@ $(function() {
     var date = new Date(x);
 
     var seriesTitles = ["Money in", "Money out", "Balance change"];
-    showTooltip(item.pageX, item.pageY, (seriesTitles[item.seriesIndex]) + " during " + months[date.getMonth()] + " " + date.getFullYear() + " = " + y);
+    showTooltip(item.pageX, item.pageY, (seriesTitles[item.seriesIndex]) + " during " + date.getDisplayMonth() + " " + date.getFullYear() + " = " + y);
    }
   } else {
    $("#tooltip").remove();
