@@ -292,9 +292,13 @@ function shouldMerge(a, b) {
  */
 function drawCategoryPieChart(included, incoming) {
  var pieData = getCategoryTotals(included, incoming);
+ var total = 0;
+
+ $.each(pieData, function(_, amount) { total += amount; });
+
  var seriesData = [];
  $.each(pieData, function(category, amount) {
-  seriesData.push({ label: category + ' (' + Math.round(amount) + ')', data: amount });
+  seriesData.push({ label: category + ' (&pound;' + amount.toCurrency() + ', ' + Math.floor(100 * amount / total) + '%)', data: amount });
  });
 
  seriesData.sort(function(a, b) { return b.data - a.data; });
@@ -361,7 +365,7 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
    lastEntry.Amount = Math.round(100 * (lastEntry.Amount + this.Amount)) / 100;
    $('#collapseHandle' + lastEntry.id).data('total', lastEntry.Amount);
 
-   !expanded[lastEntry.id] && tr.hide() && $('.amount', lastEntry.tr).text(lastEntry.Amount);
+   !expanded[lastEntry.id] && tr.hide() && $('.amount', lastEntry.tr).text(lastEntry.Amount.toCurrency());
 
    tr.addClass('collapsed hidden' + lastEntry.id);
   } else {
@@ -508,7 +512,7 @@ $(function() {
  });
 
  $('#expense').bind('plotclick', function(event, pos, item) {
-  setState({ categoryFilter: item.series.label.replace(/ \([0-9]+\)$/, '') }, ['expanded']);
+  setState({ categoryFilter: item.series.label.replace(/ \(.*$/, '') }, ['expanded']);
  });
 
  $.history.init(handleStateChange);
