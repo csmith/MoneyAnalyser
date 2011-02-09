@@ -189,6 +189,28 @@ Number.prototype.toCurrency = function() {
 };
 
 /**
+ * Computes the arithmatic mean, variance and deviation for the given array.
+ *
+ * @param a Array of numbers to be averaged
+ * @return A map containing the mean, variance and deviation
+ */
+function getAverage(a){
+ var r = {mean: 0, variance: 0, deviation: 0};
+ var length = a.length;
+
+ // Sum the array
+ for (var sum = 0, i = length; i--; sum += a[i]);
+
+ var mean = r.mean = sum / length
+
+ // Sum the squares of the differences from the mean
+ for (var i = length, sum = 0; i--; sum += Math.pow(a[i] - mean, 2));
+
+ r.deviation = Math.sqrt(r.variance = sum / length)
+ return r;
+}
+
+/**
  * Adds an 'alt' class to every other visible row in the specified table.
  *
  * @param table The table to be marked-up
@@ -310,6 +332,70 @@ function drawCategoryPieChart(included, incoming) {
 }
 
 /**
+ * Calculates repeat transactions within the specified data.
+ *
+ * @param data The data to be analysed
+ */
+function calculateRepeatTransactions(data) {
+ $('#repeats').show();
+ $('#repeats tr.data').remove();
+ var table = $('#repeats table');
+
+ var descs = {};
+
+ $.each(data, function() {
+  if (!descs[this.Description]) { descs[this.Description] = []; }
+  descs[this.Description].push(this);
+ });
+
+ var monthTotal = 0;
+ $.each(descs, function(desc) {
+  // We only care if there are at least more than 2
+  if (this.length < 3) { return; }
+
+  var lastTime = 0;
+  var differences = [];
+  var amounts = [];
+
+  $.each(this, function() {
+   var time = new Date(this.Date.date).getTime();
+   lastTime > 0 && differences.push(time - lastTime);
+   lastTime = time;
+   amounts.push(this.Amount);
+  });
+
+  var average = getAverage(differences);
+  var averageAmount = getAverage(amounts);
+
+  // I may have just made this metric up. Sue me.
+  var stability = average.deviation / average.mean;
+  var periodInDays = average.mean / (1000 * 60 * 60 * 24);
+
+  if (stability < 0.5) {
+   // Seems quite reliable...
+   if ((periodInDays >= 5 && periodInDays <= 9) || (periodInDays >= 27 && periodInDays <= 32)) {
+    // Roughly weekly or monthly
+    var monthValue = (periodInDays <= 9 ? 4 : 1) * averageAmount.mean;
+
+    var tr = $('<tr class="data"/>').appendTo(table);
+    $('<td/>').text(desc).appendTo(tr);
+    $('<td/>').text(this[0].Category ? this[0].Category : 'Unsorted').appendTo(tr);
+    $('<td/>').text(periodInDays <= 9 ? 'Weekly' : 'Monthly').appendTo(tr);
+    $('<td class="amount"/>').text(averageAmount.mean.toCurrency()).appendTo(tr);
+    $('<td class="amount"/>').text(monthValue.toCurrency()).appendTo(tr);
+
+    monthTotal += monthValue;
+   }
+  }
+ });
+
+ colourTableRows(table);
+ var tr = $('<tr/>').addClass('data total').appendTo(table);
+ $('<th colspan="4" class="total">Total</th>').appendTo(tr);
+ $('<td class="amount"></td>').text(monthTotal.toCurrency()).appendTo(tr);
+}
+
+/**
  * Displays transactions and draws a category pie chart for the specified
  * date range. Note that dates have a granularity of a month.
  *
@@ -385,6 +471,7 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
 
  colourTableRows(table);
  drawCategoryPieChart(included, incoming);
+ calculateRepeatTransactions(included);
 }
 
 $(function() {

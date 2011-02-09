@@ -5,6 +5,7 @@
   <script src="externals/flot/jquery.js" type="text/javascript"></script>
   <script src="externals/flot/jquery.flot.js" type="text/javascript"></script>
   <script src="externals/flot/jquery.flot.pie.js" type="text/javascript"></script>
+  <script src="externals/flot/jquery.flot.resize.js" type="text/javascript"></script>
   <script src="externals/flot/jquery.flot.selection.js" type="text/javascript"></script>
   <script src="externals/flot/jquery.flot.stack.js" type="text/javascript"></script>
   <script src="externals/jquery.history/jquery.history.js" type="text/javascript"></script>
@@ -28,6 +29,7 @@
    #historytable tr.collapsed { opacity: 0.6; }
    table tr.total td, table tr.total th { background-color: #666; color: #fff; }
    .amount { text-align: right; }
+   .datatable { width: 100%; }
   </style>
  </head>
  <body>
@@ -39,13 +41,27 @@
   <div class="left">
    <h2>Transaction History</h2>
    <div id="history" style="width: 100%; height: 300px;" class="graph"></div>
-   <div id="historytable" style="display: none;"><h3>Transactions for ??</h3><table><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th></tr></table></div>
+   <div id="historytable" style="display: none;">
+    <h3>Transactions for ??</h3>
+    <table class="datatable"><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th></tr></table>
+   </div>
   </div>
   <div class="right">
    <h2>Categories</h2>
    <div id="expense" style="width: 100%; height: 300px;" class="graph"></div>
    <h2>Expense Categories</h2>
-   <div id="cathistory" style="width: 100%; height: 600px;" class="graph"></div>
+   <!-- The tick labels on the X-Axis extend a bit beyond the edge of the
+        graph, so make the graph 50px smaller so the page doesn't scroll -->
+   <div style="padding-right: 50px;">
+    <div id="cathistory" style="width: 100%; height: 600px;" class="graph"></div>
+   </div>
+   <div id="repeats" style="display: none;">
+    <h2>Repeat Transactions</h2>
+    <table class="datatable">
+     <tr><th rowspan="2">Transaction</th><th rowspan="2">Category</th><th rowspan="2">Frequency</th><th colspan="2">Average amount</th></tr>
+     <tr><th>Per trans</th><th>Per month</th></tr>
+    </table>
+   </div>
   </div>
  </body>
 </html>
