@@ -179,6 +179,16 @@ function handleStateChange(hash) {
 // -----------------------------------------------------------------------------
 
 /**
+ * Formats the specified number in a manner suitable for a currency. That is,
+ * fixed to two decimal places and with a thousand separator every 3 digits.
+ *
+ * @return A string representation of the number as a currency
+ */
+Number.prototype.toCurrency = function() {
+ return this.toFixed(2).replace(/([0-9])(?=([0-9]{3})+\.)/g, '$1,');
+};
+
+/**
  * Adds an 'alt' class to every other visible row in the specified table.
  *
  * @param table The table to be marked-up
@@ -245,7 +255,7 @@ function ensureExpanded(oldList, newList) {
    $('.hidden' + id).show();
    var handle = $('#collapseHandle' + id);
    handle.text(handle.text().replace(/\+/, '-'));
-   handle.parents('tr').find('td.amount').text(handle.data('single'));
+   handle.parents('tr').find('td.amount').text(parseFloat(handle.data('single')).toCurrency());
   }
  });
 
@@ -255,7 +265,7 @@ function ensureExpanded(oldList, newList) {
    $('.hidden' + id).hide();
    var handle = $('#collapseHandle' + id);
    handle.text(handle.text().replace(/\-/, '+'));
-   handle.parents('tr').find('td.amount').text(handle.data('total'));
+   handle.parents('tr').find('td.amount').text(parseFloat(handle.data('total')).toCurrency());
   }
  });
 
@@ -362,12 +372,12 @@ function showSelectedMonths(start, end, incoming, outgoing, categoryFilter, expa
   $('<td/>').text(this.Type ? this.Type : 'Other').appendTo(tr);
   $('<td/>').text(this.Category ? this.Category : '').appendTo(tr);
   $('<td/>').addClass('desc').text(this.Description).appendTo(tr);
-  $('<td/>').addClass('amount').text(this.Amount).appendTo(tr);
+  $('<td/>').addClass('amount').text(this.Amount.toCurrency()).appendTo(tr);
  });
 
  var tr = $('<tr/>').addClass('data total').appendTo(table);
  $('<th colspan="4" class="total">Total</th>').appendTo(tr);
- $('<td class="amount"></td>').text(total).appendTo(tr);
+ $('<td class="amount"></td>').text(total.toCurrency()).appendTo(tr);
 
  colourTableRows(table);
  drawCategoryPieChart(included, incoming);
