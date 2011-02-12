@@ -45,6 +45,18 @@ Date.prototype.getRangeText = function(other) {
 }
 
 /**
+ * Parses a date string in the format YYYY-MM-DD HH:MM:SS.
+ *
+ * @param {String} input The input string
+ * @return {int} Number of milliseconds since 1970
+ */
+Date.parseYMD = function(input) {
+ var parts = input.split(/[:\-\s]/);
+ var date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), parseInt(parts[3], 10), parseInt(parts[4], 10), parseInt(parts[5], 10));
+ return date.getTime();
+}
+
+/**
  * Gets a date object corresponding to the specified timestamp. If advanceToNext
  * is specified, and the timestamp doesn't already correspond to the first of
  * the month, the date is forwarded to the first day of the next month.
@@ -358,7 +370,7 @@ function calculateRepeatTransactions(data) {
   var amounts = [];
 
   $.each(this, function() {
-   var time = new Date(this.Date.date).getTime();
+   var time = Date.parseYMD(this.Date.date);
    lastTime > 0 && differences.push(time - lastTime);
    lastTime = time;
    amounts.push(this.Amount);
