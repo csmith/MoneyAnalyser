@@ -353,8 +353,10 @@ function calculateRepeatTransactions(data) {
  $('#repeats tr.data').remove();
  var table = $('#repeats table');
 
- var descs = {};
+ // This assumes data is sorted by date
+ var timeSpan = Date.parseYMD(data[data.length - 1].Date.date) - Date.parseYMD(data[0].Date.date);
 
+ var descs = {};
  $.each(data, function() {
   if (!descs[this.Description]) { descs[this.Description] = []; }
   descs[this.Description].push(this);
@@ -382,22 +384,32 @@ function calculateRepeatTransactions(data) {
   // I may have just made this metric up. Sue me.
   var stability = average.deviation / average.mean;
   var periodInDays = average.mean / (1000 * 60 * 60 * 24);
+  var stretch = average.mean * differences.length / timeSpan;
 
-  if (stability < 0.5) {
-   // Seems quite reliable...
-   if ((periodInDays >= 5 && periodInDays <= 9) || (periodInDays >= 27 && periodInDays <= 32)) {
-    // Roughly weekly or monthly
-    var monthValue = (periodInDays <= 9 ? 4 : 1) * averageAmount.mean;
+  if (stretch > 0.5) {
+   // Happens across a decent proportion of our timespan
+   var monthValue, periodText, classes;
 
-    var tr = $('<tr class="data"/>').appendTo(table);
+   if (stability < 0.5 && ((periodInDays >= 5 && periodInDays <= 9) || (periodInDays >= 27 && periodInDays <= 32))) {
+    // Stable and roughly weekly or monthly
+    monthValue = (periodInDays <= 9 ? 4 : 1) * averageAmount.mean;
+    periodText = periodInDays <= 9 ? 'Weekly' : 'Monthly';
+    classes = 'data';
+   } else {
+    // Somewhat sporadic
+    monthValue = averageAmount.mean * 30.4 / periodInDays;
+    periodText = 'Sporadic (~' + periodInDays.toFixed(1) + ' days)';
+    classes = 'data sporadic';
+   }
+
+    var tr = $('<tr/>').addClass(classes).appendTo(table);
     $('<td/>').text(desc).appendTo(tr);
     $('<td/>').text(this[0].Category ? this[0].Category : 'Unsorted').appendTo(tr);
-    $('<td/>').text(periodInDays <= 9 ? 'Weekly' : 'Monthly').appendTo(tr);
+    $('<td/>').text(periodText).appendTo(tr);
     $('<td class="amount"/>').text(averageAmount.mean.toCurrency()).appendTo(tr);
     $('<td class="amount"/>').text(monthValue.toCurrency()).appendTo(tr);
 
     monthTotal += monthValue;
-   }
   }
  });
 
