@@ -1,2 +1,4 @@
 /Statements
 *.local.*
+*~
+*.swp
